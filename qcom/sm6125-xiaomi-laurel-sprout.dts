@@ -12,6 +12,7 @@
 #include "sm6125.dtsi"
 #include "pm6125.dtsi"
 #include "pmi632.dtsi"
+#include "sm6125-xiaomi-laurel-sprout-battery.dtsi"
 
 /delete-node/ &reserved_mem1;
 /delete-node/ &adsp_pil_mem;

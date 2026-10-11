@@ -134,3 +134,10 @@ linked from ACK; its upstream authored commit remains in kernel history.
 CX/L8 stays on ath10k, and the unsupported duplicate L23 CH1 vote is removed.
 The new candidate is unbuilt/unvalidated; see the companion kernel's
 Documentation/android/WIFI_IMPLEMENTATION_20261008.md.
+
+PMI632 charger/gauge, supplier battery curves and binding schemas are now carried here. Source-only status, stock provenance and validation limits: companion kernel Documentation/android/PMIC_BATTERY.md.
+
+Charging correction (2026-10-09): stock SMB1355 I2C/IRQ/SMB_EN/sense wiring,
+legacy QUSB2 DPDM regulator and explicit QG sampling parameters are included.
+Extended PHY/power bindings are owned here, linked from ACK. See companion
+kernel Documentation/android/PMIC_CHARGING_FIX.md; source is unbuilt/unvalidated.

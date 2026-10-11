@@ -1,0 +1,194 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/power/supply/qcom,pmi632-qg.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Qualcomm PMI632 QGauge Fuel Gauge
+
+maintainers:
+  - Marc Lainez <marc.lainez@gmail.com>
+
+description:
+  The QGauge (QG) block found in the Qualcomm PMI632 PMIC provides battery
+  fuel gauging through hardware voltage and current FIFO sampling, open
+  circuit voltage (OCV) measurement, and coulomb counting. The hardware
+  has a multi-state FSM (S1-S7) that automatically transitions between
+  active sampling and low-power sleep states.
+
+allOf:
+  - $ref: power-supply.yaml#
+  - if:
+      required:
+        - battery-profiles
+    then:
+      properties:
+        io-channels:
+          minItems: 2
+        io-channel-names:
+          minItems: 2
+
+properties:
+  nvmem-cells:
+    minItems: 3
+    items:
+      - description: Stock QG SDAM little-endian validity magic at offset 0x80
+      - description: Eight little-endian u16 cycle-count buckets at offset 0x58
+      - description: Stock signed little-endian learned capacity in mAh at offset 0x68
+      - description: Shutdown record validity byte at SDAM offset 0x46
+      - description: Shutdown SOC, temperature, resistance, OCV, current and RTC at offsets 0x47 through 0x57
+
+  nvmem-cell-names:
+    minItems: 3
+    items:
+      - const: history-magic
+      - const: cycle-count-buckets
+      - const: learned-capacity
+      - const: soc-valid
+      - const: soc-state
+
+  qcom,primary-charger:
+    $ref: /schemas/types.yaml#/definitions/phandle
+    description: Primary charger supplying battery status and health.
+
+  qcom,parallel-charger:
+    $ref: /schemas/types.yaml#/definitions/phandle
+    description: SMB1355 secondary charger used for current budgeting and sensing.
+
+  compatible:
+    const: qcom,pmi632-qg
+
+  reg:
+    maxItems: 1
+
+  interrupts:
+    items:
+      - description: Battery missing interrupt
+      - description: Battery voltage low interrupt
+      - description: Battery voltage empty interrupt
+      - description: FIFO data update done interrupt
+      - description: Good OCV measured interrupt
+
+  interrupt-names:
+    items:
+      - const: batt-missing
+      - const: vbat-low
+      - const: vbat-empty
+      - const: fifo-done
+      - const: good-ocv
+
+  io-channels:
+    minItems: 1
+    items:
+      - description: ADC channel for battery thermistor temperature
+      - description: Optional ratiometric battery ID voltage with 100 kohm pull-up
+
+  io-channel-names:
+    minItems: 1
+    items:
+      - const: batt-therm
+      - const: batt-id
+
+  battery-profiles:
+    type: object
+    description: Supplier discharge OCV tables selected by measured ID resistance.
+    properties:
+      '#address-cells':
+        const: 1
+      '#size-cells':
+        const: 0
+    patternProperties:
+      '^profile@[0-9a-f]+$':
+        type: object
+        properties:
+          reg:
+            maxItems: 1
+            description: Nominal battery ID resistance in ohms (20 percent tolerance).
+          ocv-capacity-celsius:
+            $ref: /schemas/types.yaml#/definitions/uint32-array
+            minItems: 1
+            maxItems: 20
+        patternProperties:
+          '^ocv-capacity-table-[0-9]+$':
+            $ref: /schemas/types.yaml#/definitions/uint32-matrix
+            items:
+              items:
+                - description: OCV in microvolts
+                - description: Capacity in percent
+                  minimum: 0
+                  maximum: 100
+        required:
+          - reg
+          - ocv-capacity-celsius
+          - ocv-capacity-table-0
+        additionalProperties: false
+    required:
+      - '#address-cells'
+      - '#size-cells'
+    additionalProperties: false
+
+  qcom,s2-fifo-length:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    minimum: 1
+    maximum: 8
+    description: Number of S2 voltage/current samples per FIFO update.
+
+  qcom,s2-acc-length:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    enum: [2, 4, 8, 16, 32, 64, 128, 256]
+    default: 128
+    description: ADC conversions accumulated in each S2 FIFO sample.
+
+  qcom,s2-acc-interval-ms:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    minimum: 10
+    maximum: 2550
+    multipleOf: 10
+    default: 100
+    description: Interval between ADC conversions in milliseconds.
+
+  monitored-battery: true
+
+  power-supplies: true
+
+dependentRequired:
+  nvmem-cells: [nvmem-cell-names]
+  nvmem-cell-names: [nvmem-cells]
+
+required:
+  - compatible
+  - reg
+  - interrupts
+  - interrupt-names
+  - monitored-battery
+  - io-channels
+  - io-channel-names
+
+additionalProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/interrupt-controller/irq.h>
+    pmic {
+      #address-cells = <1>;
+      #size-cells = <0>;
+
+      fuel-gauge@4800 {
+        compatible = "qcom,pmi632-qg";
+        reg = <0x4800>;
+        interrupts = <0x2 0x48 0x0 IRQ_TYPE_EDGE_BOTH>,
+                     <0x2 0x48 0x1 IRQ_TYPE_EDGE_BOTH>,
+                     <0x2 0x48 0x2 IRQ_TYPE_EDGE_RISING>,
+                     <0x2 0x48 0x3 IRQ_TYPE_EDGE_RISING>,
+                     <0x2 0x48 0x4 IRQ_TYPE_EDGE_RISING>;
+        interrupt-names = "batt-missing",
+                          "vbat-low",
+                          "vbat-empty",
+                          "fifo-done",
+                          "good-ocv";
+
+        monitored-battery = <&battery>;
+        io-channels = <&pmi632_adc 0x4a>;
+        io-channel-names = "batt-therm";
+      };
+    };

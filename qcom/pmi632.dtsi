@@ -44,6 +44,39 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
+		pmi632_charger: charger@1000 {
+			compatible = "qcom,pmi632-charger";
+			reg = <0x1000>;
+			interrupts = <0x2 0x13 0x4 IRQ_TYPE_EDGE_BOTH>,
+				     <0x2 0x12 0x2 IRQ_TYPE_EDGE_BOTH>,
+				     <0x2 0x16 0x1 IRQ_TYPE_EDGE_RISING>,
+				     <0x2 0x13 0x7 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "usb-plugin", "bat-ov", "wdog-bark",
+					  "usbin-icl-change";
+			io-channels = <&pmi632_adc ADC5_USB_IN_I>,
+				      <&pmi632_adc ADC5_USB_IN_V_16>,
+				      <&pmi632_adc ADC5_BAT_THERM_100K_PU>,
+				      <&pmi632_adc ADC5_CHG_TEMP>;
+			io-channel-names = "usbin_i", "usbin_v", "batt-therm", "chg-temp";
+			status = "disabled";
+		};
+
+		pmi632_qg: fuel-gauge@4800 {
+			compatible = "qcom,pmi632-qg";
+			reg = <0x4800>;
+			interrupts = <0x2 0x48 0x0 IRQ_TYPE_EDGE_BOTH>,
+				     <0x2 0x48 0x1 IRQ_TYPE_EDGE_BOTH>,
+				     <0x2 0x48 0x2 IRQ_TYPE_EDGE_RISING>,
+				     <0x2 0x48 0x3 IRQ_TYPE_EDGE_RISING>,
+				     <0x2 0x48 0x4 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "batt-missing", "vbat-low", "vbat-empty",
+					  "fifo-done", "good-ocv";
+			io-channels = <&pmi632_adc ADC5_BAT_THERM_100K_PU>,
+				      <&pmi632_adc ADC5_BAT_ID_100K_PU>;
+			io-channel-names = "batt-therm", "batt-id";
+			status = "disabled";
+		};
+
 		pmi632_vbus: usb-vbus-regulator@1100 {
 			compatible = "qcom,pmi632-vbus-reg", "qcom,pm8150b-vbus-reg";
 			reg = <0x1100>;
@@ -125,6 +158,14 @@
 				label = "chg_temp";
 			};
 
+			channel@4a {
+				reg = <ADC5_BAT_THERM_100K_PU>;
+				qcom,hw-settle-time = <200>;
+				qcom,pre-scaling = <1 1>;
+				qcom,ratiometric;
+				label = "bat_therm";
+			};
+
 			channel@4b {
 				reg = <ADC5_BAT_ID_100K_PU>;
 				qcom,hw-settle-time = <200>;
@@ -159,6 +200,29 @@
 		pmi632_pbs_client3: pbs@7400 {
 			compatible = "qcom,pmi632-pbs", "qcom,pbs";
 			reg = <0x7400>;
+		};
+
+		/* QGauge history, distinct from the LPG SDAM at b600. */
+		pmi632_qg_sdam: nvram@b100 {
+			compatible = "qcom,spmi-sdam";
+			reg = <0xb100>;
+			read-only;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0 0xb100 0x100>;
+			status = "disabled";
+
+			pmi632_qg_cycles: cycle-count@58 {
+				reg = <0x58 0x10>;
+			};
+
+			pmi632_qg_learned_capacity: learned-capacity@68 {
+				reg = <0x68 0x2>;
+			};
+
+			pmi632_qg_magic: history-magic@80 {
+				reg = <0x80 0x4>;
+			};
 		};
 
 		pmi632_sdam_7: nvram@b600 {

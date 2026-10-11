@@ -50,7 +50,8 @@
 };
 
 &pm6125_rtc {
-	status = "disabled";
+	/* QG shutdown SOC uses retained PMIC elapsed time in every profile. */
+	status = "okay";
 };
 
 &qupv3_id_0 {
